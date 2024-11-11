@@ -1,6 +1,6 @@
 ---
 title: "Wildfire Network Analysis"
-author: "Mariya Putwa"
+author: "Atharva Jagtap, Ishika Agarwal, Mariya Putwa, Prateek Balani"
 date: "2024-11-11"
 output: pdf_document
 ---
@@ -15,6 +15,7 @@ library(ggplot2)
 library(sf)
 library(RColorBrewer)
 library(viridis)
+par(mar = c(1, 1, 1, 1.5))
 
 wildfire_data <- read.csv("data_clean.csv")
 
@@ -22,7 +23,7 @@ wildfire_data <- read.csv("data_clean.csv")
 top_fires <- wildfire_data %>%
   group_by(fire_year) %>%
   arrange(desc(current_size)) %>%
-  slice_head(n = 25) %>%
+  slice_head(n = 100) %>%
   ungroup()
 
 # Create a unique identifier by combining `fire_year` and `fire_number`
@@ -87,7 +88,6 @@ activity_classes <- unique(nodes$activity_class)
 color_palette <- brewer.pal(n = length(activity_classes), name = "Set3")  # Customize with any color palette you prefer
 activity_colors <- setNames(color_palette, activity_classes)  # Map each activity_class to a color
 
-
 # Apply colors to nodes based on `activity_class`
 V(g)$color <- activity_colors[V(g)$activity_class]
 
@@ -109,7 +109,7 @@ plot(g,
      vertex.label = NA,
      edge.color = edge_color,      # Transparent edge color
      edge.width = 0.5,
-     main = "Wildfire Network of Top 25 Fires per Year (Clustered by Activity Class)")
+     main = "Wildfire Network of Top 100 Fires per Year (Clustered by Activity Class)")
 
 legend("right", 
        legend = names(activity_colors),
@@ -123,7 +123,6 @@ legend("right",
 
 ```
 
-# plot for each year
 ```{r}
 # Fixed bounding box for Canada
 register_stadiamaps("59b82ef6-c67a-4d54-ac10-301e0edb43e4", write = TRUE)
@@ -203,9 +202,53 @@ head(top_eigenvector, 5)
 top_clustering <- centrality_measures[order(-centrality_measures$clustering), ]
 head(top_clustering, 5)
 
-# Plotting the centrality measures
+# Calculate network density
+network_density <- edge_density(g)
+cat("Network Density:", network_density)
+```
 
+```{r}
+# 1. Visualize Degree Centrality Distribution
+degree_centrality_df <- data.frame(node = names(Degree_centrality), degree = Degree_centrality)
 
+ggplot(degree_centrality_df, aes(x = degree)) +
+  geom_histogram(bins = 30, fill = "skyblue", color = "black") +
+  labs(title = "Degree Centrality Distribution", x = "Degree Centrality", y = "Frequency")
 
+# 2. Visualize Closeness Centrality Distribution
+closeness_centrality_df <- data.frame(node = names(Closeness_centrality), closeness = Closeness_centrality)
 
+ggplot(closeness_centrality_df, aes(x = closeness)) +
+  geom_histogram(bins = 30, fill = "salmon", color = "black") +
+  labs(title = "Closeness Centrality Distribution", x = "Closeness Centrality", y = "Frequency")
+
+# 3. Visualize Betweenness Centrality Distribution
+betweenness_centrality_df <- data.frame(node = names(Betweenness_centrality), betweenness = Betweenness_centrality)
+
+ggplot(betweenness_centrality_df, aes(x = betweenness)) +
+  geom_histogram(bins = 30, fill = "lightgreen", color = "black") +
+  labs(title = "Betweenness Centrality Distribution", x = "Betweenness Centrality", y = "Frequency")
+
+# 4. Visualize Eigenvector Centrality Distribution
+eigenvector_centrality_df <- data.frame(node = names(Eigenvector_centrality), eigenvector = Eigenvector_centrality)
+
+ggplot(eigenvector_centrality_df, aes(x = eigenvector)) +
+  geom_histogram(bins = 30, fill = "purple", color = "black") +
+  labs(title = "Eigenvector Centrality Distribution", x = "Eigenvector Centrality", y = "Frequency")
+
+# 5. Community Detection and Visualization
+# Detect communities using a community detection algorithm (Louvain)
+communities <- cluster_louvain(g)
+V(g)$community <- membership(communities)
+
+# Plot the network with nodes
+set.seed(42)  # For reproducible layout
+par(mar = c(1, 1, 1, 1))
+plot(g, 
+     vertex.color = adjustcolor(V(g)$color, alpha.f = 0.5),
+     vertex.size = V(g)$size,
+     vertex.label = NA,
+     edge.width = 1.5,
+     edge.color = adjustcolor("red"),
+     main = "Wildfire Network with Communities Highlighted")
 ```
