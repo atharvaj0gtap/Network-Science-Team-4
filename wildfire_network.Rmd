@@ -84,8 +84,8 @@ V(g)$activity_class <- nodes$activity_class
 
 # Map `activity_class` to colors
 activity_classes <- unique(nodes$activity_class)
-colors_palette <- viridis_pal(option = "plasma")(length(unique(activity_classes)))
-activity_colors <- setNames(colors_palette, activity_classes)  # Map each activity_class to a color
+color_palette <- brewer.pal(n = length(activity_classes), name = "Set3")  # Customize with any color palette you prefer
+activity_colors <- setNames(color_palette, activity_classes)  # Map each activity_class to a color
 
 
 # Apply colors to nodes based on `activity_class`
@@ -95,7 +95,7 @@ V(g)$color <- activity_colors[V(g)$activity_class]
 V(g)$size <- log(nodes$current_size + 1) * 2
 
 # Adjust node colors for transparency
-node_colors <- adjustcolor(V(g)$color, alpha.f = 0.7)  # 70% opacity
+node_colors <- adjustcolor(V(g)$color, alpha.f = 0.5)  # 70% opacity
 
 # Adjust edge color for transparency
 edge_color <- adjustcolor("grey", alpha.f = 0.3)  # 30% opacity
@@ -159,4 +159,53 @@ map_base <- get_stadiamap(
     theme(legend.position = "bottom") +
     scale_size(range = c(2, 6))
 }
+```
+```{r}
+
+# Data Analysis on the given data 
+
+Degree_centrality <- degree(g)
+Closeness_centrality <- closeness(g)
+Betweenness_centrality <- betweenness(g)
+Eigenvector_centrality <- evcent(g)$vector
+Clustering_coefficient <- transitivity(g, type = "local")
+
+# Combine centrality measures into a data frame
+centrality_measures <- data.frame(
+  node = V(g)$name,
+  degree = Degree_centrality,
+  closeness = Closeness_centrality,
+  betweenness = Betweenness_centrality,
+  eigenvector = Eigenvector_centrality,
+  clustering = Clustering_coefficient
+)
+
+summary(centrality_measures)
+
+# Top 5 nodes by degree centrality
+top_degree <- centrality_measures[order(-centrality_measures$degree), ]
+head(top_degree, 5)
+
+# Top 5 nodes by closeness centrality
+top_closeness <- centrality_measures[order(-centrality_measures$closeness), ]
+head(top_closeness, 5)
+
+# Top 5 nodes by betweenness centrality
+top_betweenness <- centrality_measures[order(-centrality_measures$betweenness), ]
+head(top_betweenness, 5)
+
+# Top 5 nodes by eigenvector centrality
+top_eigenvector <- centrality_measures[order(-centrality_measures$eigenvector), ]
+head(top_eigenvector, 5)
+
+# Top 5 nodes by clustering coefficient
+
+top_clustering <- centrality_measures[order(-centrality_measures$clustering), ]
+head(top_clustering, 5)
+
+# Plotting the centrality measures
+
+
+
+
 ```
