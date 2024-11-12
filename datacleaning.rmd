@@ -1,0 +1,104 @@
+# Loading the dataset
+data <-read.csv("/Users/ishikaagarwal/Downloads/wildfires.csv")
+
+# Checking the structure of the dataset
+str(data)
+
+# obtaining a summary of the dataset to understand its features and data types
+summary(data)
+#View the first few rows of the dataset
+head(data)
+
+# Checking for missing values
+colSums(is.na(data))
+
+#This dataset is collected from the Open Canada website that contains historical wildfires data from 2006 to 2023 in a CSV file. The structure (str(data)) and summary (summary(data)) functions 
+#provide insights into the data types and some basic statistics (e.g., mean, min, max) for each column. 
+#The head(data) function helps us quickly understand the first few rows of the dataset.
+
+#adding missing values using mean and median 
+#Impute numerical columns with the median
+data$discovered_size[is.na(data$discovered_size)] <- median(data$discovered_size, na.rm = TRUE)
+data$fire_spread_rate[is.na(data$fire_spread_rate)] <- median(data$fire_spread_rate, na.rm = TRUE)
+data$temperature[is.na(data$temperature)] <- median(data$temperature, na.rm = TRUE)
+data$relative_humidity[is.na(data$relative_humidity)] <- median(data$relative_humidity, na.rm = TRUE)
+data$wind_speed[is.na(data$wind_speed)] <- median(data$wind_speed, na.rm = TRUE)
+data$bucketing_on_fire[is.na(data$bucketing_on_fire)] <- median(data$bucketing_on_fire, na.rm = TRUE)
+data$distance_from_water_source[is.na(data$distance_from_water_source)] <- median(data$distance_from_water_source, na.rm = TRUE)
+data$first_bucket_drop_date[is.na(data$first_bucket_drop_date)] <- median(data$first_bucket_drop_date, na.rm = TRUE)
+data$to_hectares[is.na(data$to_hectares)] <- median(data$to_hectares, na.rm = TRUE)
+data$ex_hectares[is.na(data$ex_hectares)] <- median(data$ex_hectares, na.rm = TRUE)
+
+#Numerical columns with missing values are imputed using the median value of each
+#column. The na.rm = TRUE argument ensures that NA values are ignored when calculating the median. Imputation is performed on various numerical columns 
+#such as discovered_size, fire_spread_rate, temperature, etc.
+
+## Impute categorical columns with the mode (most frequent value)
+mode_value <- function(x) {
+  uniq_x <- unique(x)
+  uniq_x[which.max(tabulate(match(x, uniq_x)))]
+}
+
+##The function mode_value() calculates the mode (most frequent value) of a categorical column. Missing values in categorical
+#columns such as fire_type, wind_direction, 
+#and fuel_type are imputed with the mode.
+
+data$fire_type[is.na(data$fire_type)] <- mode_value(data$fire_type)
+data$wind_direction[is.na(data$wind_direction)] <- mode_value(data$wind_direction)
+data$fuel_type[is.na(data$fuel_type)] <- mode_value(data$fuel_type)
+
+
+data <- data[, colSums(is.na(data)) < (0.5 * nrow(data))]
+
+#This step removes columns where more than 50% of the values are missing. The colSums(is.na(data)) function calculates the number of missing values per column, and nrow(data) gives the total number of rows.
+#If more than half the rows have missing values in a column, it gets removed.
+
+# Downsample the data to 10% of its original size
+library(dplyr)
+data_sampled <- dplyr::slice_sample(data, prop = 0.1)
+install.packages("naniar")
+library(naniar)
+
+# Visualizing missing data
+vis_miss(data_sampled)
+
+#This step visualizes the missing data using the naniar package, which provides functions to detect and visualize missing data patterns. 
+#vis_miss(data_sampled) creates a plot showing missing values for the sampled dataset.
+
+# Visualize missing data with ggplot2
+library(ggplot2)
+missing_data <- as.data.frame(sapply(data, is.na))  # TRUE/FALSE for missing data
+missing_data$index <- 1:nrow(missing_data)
+
+# Reshape for ggplot
+library(tidyr)
+missing_data_long <- gather(missing_data, key = "Variable", value = "Missing", -index)
+
+# Plot missing data
+ggplot(missing_data_long, aes(x = Variable, y = index, fill = Missing)) +
+  geom_tile() +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_fill_manual(values = c("white", "red")) +
+  labs(title = "Missing Data Heatmap", x = "Variables", y = "Observations")
+
+#alternative option for visualizing the missing value data in the efficient manner using heatmap.
+
+# Removing duplicate rows
+data <- data[!duplicated(data), ]
+
+#This step removes any duplicate rows from the dataset using duplicated(),
+#ensuring that each observation is unique.
+
+# Checking for missing data again
+colSums(is.na(data))
+
+#After the cleaning steps, this checks whether any missing values remain in the dataset.
+#ince fire_fighting_start_size and bucketing_on_fire had more than 50% of the missing data values, we chose to omit the column.
+
+# Removing rows where 'fire_fighting_start_size' or 'bucketing_on_fire' is NA
+data_clean <- data[!is.na(data$fire_fighting_start_size) & !is.na(data$bucketing_on_fire), ]
+
+summary(data_clean) #obtaining a summary on the entire cleaned dataset.
+
+colSums(is.na(data_clean)) #ensuring no columns with missing values with left for the analysis.
