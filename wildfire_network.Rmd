@@ -259,13 +259,13 @@ V(g)$community <- membership(communities)
 
 # Count the total number of communities
 total_communities <- length(unique(V(g)$community))
-print(paste("Total number of communities:", total_communities))
+cat("Total number of communities:", total_communities)
 
 # Identify the largest community and its size
 community_sizes <- sizes(communities)
 largest_community <- which.max(community_sizes)
 largest_community_size <- community_sizes[largest_community]
-print(paste("Size of the largest community:", largest_community_size))
+cat("\nSize of the largest community:", largest_community_size)
 
 # Plot the network with nodes
 set.seed(42)  # For reproducible layout
