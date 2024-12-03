@@ -15,6 +15,13 @@ library(ggplot2)
 library(sf)
 library(RColorBrewer)
 library(viridis)
+library(stringr)
+library(dbscan)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(ggspatial)
+
 
 wildfire_data <- read.csv("data_clean.csv")
 
@@ -223,6 +230,88 @@ head(top_eigenvector, 5)
 top_clustering <- centrality_measures[order(-centrality_measures$clustering), ]
 head(top_clustering, 5)
 
+
+# Plotting the centrality measures
+
+
+
+
+```
+
+```{r}
+
+# Common causes of wildfires 
+
+
+#filtering data as to prevent any missing values and in turn creating issues 
+
+wildfire_filtered <- wildfire_data %>%
+  mutate(across(where(is.character), ~ trimws(.))) %>% # Remove whitespace
+  filter(!is.na(fire_location_latitude), !is.na(fire_location_longitude), !is.na(activity_class)) %>%
+  mutate(activity_class = as.factor(activity_class))
+
+
+# Converting wildire coordinates to spatial data and using cors=4326 as it is the most common coordinate system for latitude and longitude.
+wildfire_sf <- st_as_sf(
+  wildfire_filtered,
+  coords = c("fire_location_longitude", "fire_location_latitude"),
+  crs = 4326
+)
+
+#matrix that stores a point (i.e wildire ) and its coordinates
+coords <- st_coordinates(wildfire_sf)
+
+
+wild_fire_db <- dbscan(coords, eps = 0.2, minPts = 5) #using a small eps value to prevent any overlapping of clusters and having a better understanding of the causes of the fire 
+
+# Add cluster information to the spatial data
+wildfire_sf <- wildfire_sf %>%
+  mutate(cluster = as.factor(wild_fire_db$cluster))
+
+
+# Finding the common causes of wildfires and their average size
+common_causes <- wildfire_sf %>%
+  group_by(activity_class) %>%
+  summarise(
+    count = n(),
+    avg_fire_size = mean(current_size, na.rm = TRUE)
+  ) %>%
+  arrange(desc(count))
+
+print("Most Common Causes of Wildfires:")
+print(common_causes)
+
+# Effect of causes on spread and clustering
+spread_and_clustering <- wildfire_sf %>%
+  group_by(activity_class) %>%
+  summarise(
+    avg_spread_rate = mean(fire_spread_rate, na.rm = TRUE),
+    avg_cluster_size = mean(current_size, na.rm = TRUE),
+    cluster_count = n_distinct(cluster)
+  )%>%
+  arrange(desc(cluster_count))
+
+print("Effect of Causes on Spread and Clustering:")
+print(spread_and_clustering)
+
+# Plotting the wildfire clusters on a map of Canada
+canada_map <- ne_countries(scale = "medium", returnclass = "sf") %>%
+  filter(admin == "Canada")
+
+# Plot wildfire clusters on the map
+ggplot() +
+  geom_sf(data = canada_map, fill = "lightgray", color = "white") + # Map of Canada
+  geom_sf(data = wildfire_sf, aes(color = activity_class), alpha = 0.8) + # Wildfire points
+  labs(
+    title = "Wildfire Clusters in Canada",
+    color = "Activity Class"
+  ) +
+  theme_minimal()
+
+
+```
+
+
 # Calculate network density
 network_density <- edge_density(g)
 cat("\nNetwork Density:", network_density)
@@ -278,3 +367,4 @@ plot(g,
      edge.color = adjustcolor("red"),
      main = "Wildfire Network with Communities Highlighted")
 ```
+
