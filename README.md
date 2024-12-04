@@ -10,6 +10,7 @@ K-Means was applied to standardized geographical features (longitude, latitude, 
 Five clusters were identified, representing distinct wildfire groupings.
 Geographical Distribution of Clusters:
 A geographical plot shows the spatial distribution of the clusters.
+
 <img width="617" alt="image" src="https://github.com/user-attachments/assets/c03ba37b-c635-4fab-8e53-3a69c2367102">
 
 Clusters represent varying fire causes and geographic features, such as remote regions versus areas near urban centers.
