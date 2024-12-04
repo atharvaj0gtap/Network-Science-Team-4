@@ -26,6 +26,8 @@ Causes were also related to average distances from water sources.
 
 Incorporation of Additional Variables:
 Weather conditions, temperature, and wind direction were proposed as additional variables to refine clustering and interpret results.
+<img width="1187" alt="image" src="https://github.com/user-attachments/assets/5c2e4a71-cb77-4341-b2a6-cf42d4c344d2">
+
 
 Key Findings
 Cluster Characteristics:
