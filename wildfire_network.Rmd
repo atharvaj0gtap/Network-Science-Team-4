@@ -21,7 +21,7 @@ library(sf)
 library(rnaturalearth)
 library(rnaturalearthdata)
 library(ggspatial)
-
+library(scales)
 
 wildfire_data <- read.csv("data_clean.csv")
 
@@ -229,19 +229,68 @@ head(top_eigenvector, 5)
 # Top 5 nodes by clustering coefficient
 top_clustering <- centrality_measures[order(-centrality_measures$clustering), ]
 head(top_clustering, 5)
-
-
-# Plotting the centrality measures
-
-
-
-
 ```
 
 ```{r}
+# Calculate network density
+network_density <- edge_density(g)
+cat("\nNetwork Density:", network_density)
+```
 
-# Common causes of wildfires 
+```{r}
+# 1. Visualize Degree Centrality Distribution
+degree_centrality_df <- data.frame(node = names(Degree_centrality), degree = Degree_centrality)
+ggplot(degree_centrality_df, aes(x = degree)) +
+  geom_histogram(bins = 30, fill = "skyblue", color = "black") +
+  labs(title = "Degree Centrality Distribution", x = "Degree Centrality", y = "Frequency")
 
+# 2. Visualize Closeness Centrality Distribution
+closeness_centrality_df <- data.frame(node = names(Closeness_centrality), closeness = Closeness_centrality)
+ggplot(closeness_centrality_df, aes(x = closeness)) +
+  geom_histogram(bins = 30, fill = "salmon", color = "black") +
+  labs(title = "Closeness Centrality Distribution", x = "Closeness Centrality", y = "Frequency")
+
+# 3. Visualize Betweenness Centrality Distribution
+betweenness_centrality_df <- data.frame(node = names(Betweenness_centrality), betweenness = Betweenness_centrality)
+ggplot(betweenness_centrality_df, aes(x = betweenness)) +
+  geom_histogram(bins = 30, fill = "lightgreen", color = "black") +
+  labs(title = "Betweenness Centrality Distribution", x = "Betweenness Centrality", y = "Frequency")
+
+# 4. Visualize Eigenvector Centrality Distribution
+eigenvector_centrality_df <- data.frame(node = names(Eigenvector_centrality), eigenvector = Eigenvector_centrality)
+ggplot(eigenvector_centrality_df, aes(x = eigenvector)) +
+  geom_histogram(bins = 30, fill = "purple", color = "black") +
+  labs(title = "Eigenvector Centrality Distribution", x = "Eigenvector Centrality", y = "Frequency")
+
+# 5. Community Detection and Visualization
+# Detect communities using a community detection algorithm (Louvain)
+communities <- cluster_louvain(g)
+V(g)$community <- membership(communities)
+
+# Count the total number of communities
+total_communities <- length(unique(V(g)$community))
+cat("Total number of communities:", total_communities)
+
+# Identify the largest community and its size
+community_sizes <- sizes(communities)
+largest_community <- which.max(community_sizes)
+largest_community_size <- community_sizes[largest_community]
+cat("\nSize of the largest community:", largest_community_size)
+
+# Plot the network with nodes
+set.seed(42)  # For reproducible layout
+par(mar = c(1, 1, 1, 1))
+plot(g, 
+     vertex.color = adjustcolor(V(g)$color, alpha.f = 0.5),
+     vertex.size = V(g)$size,
+     vertex.label = NA,
+     edge.width = 1.5,
+     edge.color = adjustcolor("red"),
+     main = "Wildfire Network with Communities Highlighted")
+```
+
+```{r}
+# Common causes of wildfires (Question 1 and 4)
 
 #filtering data as to prevent any missing values and in turn creating issues 
 
@@ -308,63 +357,97 @@ ggplot() +
   ) +
   theme_minimal()
 
+alberta_map <- ne_countries(scale = "medium", returnclass = "sf") %>%
+  filter(admin == "Canada") %>%
+  filter(name == "Alberta")
 
+# Plot wildfire clusters on the map
+ggplot() +
+  geom_sf(data = alberta_map, fill = "lightgray", color = "white") +
+  geom_sf(data = wildfire_sf, aes(color = activity_class), alpha = 0.8) + # Wildfire points
+  labs(
+    title = "Wildfire Clusters in Alberta",
+    color = "Activity Class"
+  ) +
+  theme_minimal()
 ```
 
-
-# Calculate network density
-network_density <- edge_density(g)
-cat("\nNetwork Density:", network_density)
-```
 ```{r}
-# 1. Visualize Degree Centrality Distribution
-degree_centrality_df <- data.frame(node = names(Degree_centrality), degree = Degree_centrality)
-ggplot(degree_centrality_df, aes(x = degree)) +
-  geom_histogram(bins = 30, fill = "skyblue", color = "black") +
-  labs(title = "Degree Centrality Distribution", x = "Degree Centrality", y = "Frequency")
+# Which year had the largest fires, and what were their characteristics? (Question 2)
 
-# 2. Visualize Closeness Centrality Distribution
-closeness_centrality_df <- data.frame(node = names(Closeness_centrality), closeness = Closeness_centrality)
-ggplot(closeness_centrality_df, aes(x = closeness)) +
-  geom_histogram(bins = 30, fill = "salmon", color = "black") +
-  labs(title = "Closeness Centrality Distribution", x = "Closeness Centrality", y = "Frequency")
+# Count the number of records for each fire year
+fire_year_counts <- wildfire_data %>%
+  group_by(fire_year) %>%
+  summarise(record_count = n()) %>%
+  arrange(desc(fire_year))
 
-# 3. Visualize Betweenness Centrality Distribution
-betweenness_centrality_df <- data.frame(node = names(Betweenness_centrality), betweenness = Betweenness_centrality)
-ggplot(betweenness_centrality_df, aes(x = betweenness)) +
-  geom_histogram(bins = 30, fill = "lightgreen", color = "black") +
-  labs(title = "Betweenness Centrality Distribution", x = "Betweenness Centrality", y = "Frequency")
+fire_year_counts
 
-# 4. Visualize Eigenvector Centrality Distribution
-eigenvector_centrality_df <- data.frame(node = names(Eigenvector_centrality), eigenvector = Eigenvector_centrality)
-ggplot(eigenvector_centrality_df, aes(x = eigenvector)) +
-  geom_histogram(bins = 30, fill = "purple", color = "black") +
-  labs(title = "Eigenvector Centrality Distribution", x = "Eigenvector Centrality", y = "Frequency")
+# Calculate the total fire size for each year
+yearly_fire_sizes <- wildfire_data %>%
+  group_by(fire_year) %>%
+  summarise(total_fire_size = sum(current_size, na.rm = TRUE),
+            max_fire_size = max(current_size, na.rm = TRUE)) %>%
+  arrange(desc(total_fire_size))
 
-# 5. Community Detection and Visualization
-# Detect communities using a community detection algorithm (Louvain)
-communities <- cluster_louvain(g)
-V(g)$community <- membership(communities)
+# Identify the year with the largest fires (total size)
+largest_fire_year <- yearly_fire_sizes$fire_year[1]
 
-# Count the total number of communities
-total_communities <- length(unique(V(g)$community))
-cat("Total number of communities:", total_communities)
+# Filter data for the year with the largest fires
+largest_fire_year_data <- wildfire_data %>%
+  filter(fire_year == largest_fire_year)
 
-# Identify the largest community and its size
-community_sizes <- sizes(communities)
-largest_community <- which.max(community_sizes)
-largest_community_size <- community_sizes[largest_community]
-cat("\nSize of the largest community:", largest_community_size)
+# Visualization: Total fire size per year
+ggplot(yearly_fire_sizes, aes(x = factor(fire_year), y = total_fire_size)) +
+  geom_bar(stat = "identity", fill = "skyblue", color = "black") +
+  labs(
+    title = "Total Fire Size by Year",
+    x = "Year",
+    y = "Total Fire Size (Hectares)"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-# Plot the network with nodes
-set.seed(42)  # For reproducible layout
-par(mar = c(1, 1, 1, 1))
-plot(g, 
-     vertex.color = adjustcolor(V(g)$color, alpha.f = 0.5),
-     vertex.size = V(g)$size,
-     vertex.label = NA,
-     edge.width = 1.5,
-     edge.color = adjustcolor("red"),
-     main = "Wildfire Network with Communities Highlighted")
+# Histogram with log scale on the x-axis
+ggplot(largest_fire_year_data, aes(x = current_size, fill = activity_class)) +
+  geom_histogram(bins = 30, color = "black", alpha = 0.7) +
+  scale_x_log10(labels = scales::comma) +  # Apply log scale and format x-axis labels
+  labs(
+    title = paste("Distribution of Fire Sizes in", largest_fire_year),
+    x = "Fire Size (Hectares) [Log Scale]",
+    y = "Frequency",
+    fill = "Activity Class"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+# Scatter plot: Relationship between fire size and environmental conditions
+ggplot(largest_fire_year_data, aes(x = temperature, y = current_size, color = wind_speed)) +
+  geom_point(alpha = 0.7) +
+  scale_color_viridis_c(option = "plasma") +
+  labs(
+    title = paste("Fire Size vs Temperature in", largest_fire_year),
+    x = "Temperature (°C)",
+    y = "Fire Size (Hectares)",
+    color = "Wind Speed (km/h)"
+  ) +
+  theme_minimal()
+
+# Add month information to the dataset
+largest_fire_year_data <- largest_fire_year_data %>%
+  mutate(month = lubridate::month(fire_start_date, label = TRUE))
+
+# Cumulative fire size by month
+ggplot(largest_fire_year_data, aes(x = month, y = current_size, group = 1)) +
+  geom_line(stat = "summary", fun = "sum", color = "blue", size = 1) +
+  geom_point(stat = "summary", fun = "sum", color = "red", size = 2) +
+  labs(
+    title = paste("Cumulative Fire Size by Month in", largest_fire_year),
+    x = "Month",
+    y = "Cumulative Fire Size (Hectares)"
+  ) +
+  theme_minimal()
 ```
-
