@@ -1,11 +1,10 @@
-# Network-Science-Team-4
-Project Title: Network Analysis of Canadian Wildfires: Investigating Causes
+# Research Summary
+Project Title: Network Analysis of Canadian Wildfires: Investigating Causes and Correlating Geographical Factors
 
 Objective: To investigate the clustering patterns of wildfires in Canada using K-Means Clustering, incorporating geographical features such as longitude, latitude, and distance from water resources, and analyzing relationships with wildfire causes and sizes. The study also explores how additional variables (e.g., weather conditions, teamperature, wind direction) influence clustering patterns.
 
 
 Analysis Overview
-
 K-Means Clustering:
 K-Means was applied to standardized geographical features (longitude, latitude, distance to water).
 Five clusters were identified, representing distinct wildfire groupings.
@@ -26,3 +25,16 @@ Causes were also related to average distances from water sources.
 
 Incorporation of Additional Variables:
 Weather conditions, temperature, and wind direction were proposed as additional variables to refine clustering and interpret results.
+
+Key Findings
+Cluster Characteristics:
+Cluster 1 (e.g., pink region): Represents areas with smaller fire sizes and fires closer to water resources. Dominated by recreational and residential causes.
+Cluster 2 (e.g., yellow region): Contains larger fires, often farther from water. Dominated by industrial and lightning-related causes.
+Cluster 3, 4, and 5: Exhibit varying average fire sizes and causes, highlighting diverse geographic and anthropogenic factors.
+Cause Analysis by Cluster:
+Lightning: Predominantly causes fires in remote areas (far from water resources).
+Recreation and Residential: Fires are concentrated closer to water bodies, highlighting human activities as significant contributors.
+Industrial and Agricultural Causes: Appear more evenly distributed but often involve larger fires.
+Distance to Water and Causes:
+Lightning-caused fires are, on average, the furthest from water.
+Fires caused by residents and recreational activities are closer to water, emphasizing the role of human proximity.
