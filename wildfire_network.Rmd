@@ -22,6 +22,11 @@ library(rnaturalearth)
 library(rnaturalearthdata)
 library(ggspatial)
 library(scales)
+library(canadianmaps)
+library(rgeoboundaries)
+library(tidyr)
+library(tibble)
+library(ggraph)
 
 wildfire_data <- read.csv("data_clean.csv")
 
