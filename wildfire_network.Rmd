@@ -157,43 +157,7 @@ cat("Number of edges in graph:", ecount(g), "\n")
 cat("Number of vertices in graph:", vcount(g), "\n")
 ```
 
-# plot for each year
-```{r}
-# Fixed bounding box for Canada
-register_stadiamaps("59b82ef6-c67a-4d54-ac10-301e0edb43e4", write = TRUE)
 
-bbox <- c(left = -140, bottom = 40, right = -50, top = 85)  # Covers Canada
-
-# Convert nodes data to an sf object for spatial plotting
-nodes_sf <- st_as_sf(nodes, coords = c("fire_location_longitude", "fire_location_latitude"), crs = 4326)
-
-# Reproject to Web Mercator (EPSG:3857) to match Stamen map tiles
-nodes_sf <- st_transform(nodes_sf, crs = 3857)
-
-# Loop to create a map for each year
-years <- unique(top_fires$fire_year)
-
-for (year in years) {
-  yearly_data <- nodes_sf %>% filter(fire_year == year)
-  
-  # Get a background map centered on Canada
-map_base <- get_stadiamap(
-    bbox = bbox,   # Use bounding box for each year's data
-    zoom = 4,      # Adjust zoom level if needed
-    maptype = "outdoors"  # Options: "outdoors", "alidade_smooth_dark"
-  )
-
-  # Plot the map with wildfire clusters overlaid
-  ggmap(map_base) +
-    geom_sf(data = yearly_data, aes(color = as.factor(cluster), size = log(current_size + 1)), inherit.aes = FALSE) +
-    scale_color_viridis_d(option = "plasma") +
-    labs(title = paste("Wildfire Locations and Clusters for Year:", year),
-         color = "Cluster") +
-    theme_minimal() +
-    theme(legend.position = "bottom") +
-    scale_size(range = c(2, 6))
-}
-```
 
 ```{r}
 # Data Analysis on the given data 
