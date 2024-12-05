@@ -349,27 +349,166 @@ canada_map <- ne_countries(scale = "medium", returnclass = "sf") %>%
 
 # Plot wildfire clusters on the map
 ggplot() +
-  geom_sf(data = canada_map, fill = "lightgray", color = "white") + # Map of Canada
-  geom_sf(data = wildfire_sf, aes(color = activity_class), alpha = 0.8) + # Wildfire points
-  labs(
-    title = "Wildfire Clusters in Canada",
-    color = "Activity Class"
-  ) +
-  theme_minimal()
-
-alberta_map <- ne_countries(scale = "medium", returnclass = "sf") %>%
-  filter(admin == "Canada") %>%
-  filter(name == "Alberta")
-
-# Plot wildfire clusters on the map
-ggplot() +
-  geom_sf(data = alberta_map, fill = "lightgray", color = "white") +
+  geom_sf(data = canada_map, fill = "lightgray", color = "black") + # Map of Canada
   geom_sf(data = wildfire_sf, aes(color = activity_class), alpha = 0.8) + # Wildfire points
   labs(
     title = "Wildfire Clusters in Alberta",
     color = "Activity Class"
   ) +
   theme_minimal()
+
+# Plotting the wildfire clusters on a map of Alberta
+
+alberta_boundary <- st_read("../Network-Science-Team-4/geoBoundaries-CAN-ADM1-all/geoBoundaries-CAN-ADM1_simplified.shp") %>%
+  filter(shapeName == "Alberta")
+
+
+
+wildfire_sf <- st_transform(wildfire_sf, st_crs(alberta_boundary))
+
+
+# Plot wildfire clusters on the map
+ggplot() +
+  geom_sf(data = alberta_boundary, fill = "lightgray", color = "black") +
+  geom_sf(data = wildfire_sf, aes(color = activity_class), alpha = 0.5) + # Wildfire points
+  labs(
+    title = "Wildfire Clusters in Alberta",
+    color = "Activity Class",
+    subtitle = "Source: GeoBoundaries"
+  ) +
+  theme_minimal()
+
+
+# Plotting the wildfire clusters on a map of Alberta (municiplaities)
+
+alberta_municipalities <- st_read("../Network-Science-Team-4/geoBoundaries-CAN-ADM2-all/geoBoundaries-CAN-ADM2.shp") %>%
+ filter(shapeName %in% c("Calgary", "Edmonton", "Red Deer", "Lethbridge--Medicine Hat",
+                          "Camrose--Drumheller", "Athabasca--Grande Prairie--Pe*", 
+                          "Wood Buffalo--Cold Lake", "Banff--Jasper--Rocky Mountain*"))
+
+
+
+wildfire_sf <- st_transform(wildfire_sf, st_crs(alberta_municipalities))
+
+# Plot wildfire clusters on the map
+ggplot() +
+  geom_sf(data = alberta_municipalities, fill = "lightgray", color = "black", size = 3) +
+  geom_sf(data = wildfire_sf, aes(color = activity_class), alpha = 0.5, size = 1) + # Wildfire points
+  labs(
+    title = "Wildfire Clusters in Alberta (municiplaities)",
+    color = "Activity Class",
+    subtitle = "Source: GeoBoundaries"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+
+# Q4 and some extra stuff 
+wildfires_with_municipalities <- st_join(wildfire_sf, alberta_municipalities, join = st_within)
+
+wildfires_with_municipalities_df <- wildfires_with_municipalities %>%
+  st_drop_geometry() %>%
+  distinct(shapeName, activity_class)
+
+fires_by_mun <- wildfires_with_municipalities_df %>%
+  group_by(shapeName) %>%
+  summarise(total_fires = n(), .groups = "drop") %>%
+  arrange(desc(total_fires))
+
+fire_cause_by_mun <- wildfires_with_municipalities_df %>%
+  group_by(shapeName, activity_class) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  arrange(desc(count))
+
+
+# making a adjacency matrix to see the relationship between the wildfires and the municipalities
+wildfire_adjacency <- wildfires_with_municipalities_df %>%
+  select(shapeName, activity_class) %>%
+  distinct() %>%
+  inner_join(., ., by = "activity_class") %>%
+  filter(shapeName.x != shapeName.y) %>%  # Remove self-joins
+  group_by(shapeName.x, shapeName.y) %>%
+  summarise(shared_cause_count = n(), .groups = "drop")
+
+adj_matrix <- wildfire_adjacency %>%
+  pivot_wider(names_from = shapeName.y, values_from = shared_cause_count, values_fill = 0) %>%
+  column_to_rownames(var = "shapeName.x") %>%
+  as.matrix()
+
+# Ensure the matrix is symmetric
+adj_matrix <- pmax(adj_matrix, t(adj_matrix))  # Symmetrize
+
+#create graph from adj matrix 
+
+wildfire_graph <- graph_from_adjacency_matrix(adj_matrix, mode = "undirected", weighted = TRUE)
+
+degree_centrality_mun <- degree(wildfire_graph)
+betweenness_centrality_mun <- betweenness(wildfire_graph)
+closeness_centrality_mun <- closeness(wildfire_graph)
+eigenvector_centrality_mun <- eigen_centrality(wildfire_graph)$vector
+
+# Combine centrality measures into a data frame
+centrality_measures_mun <- data.frame(
+  degree = degree_centrality_mun,
+  betweenness = betweenness_centrality_mun,
+  closeness = closeness_centrality_mun,
+  eigenvector = eigenvector_centrality_mun
+)
+
+centrality_measures_mun <- centrality_measures_mun %>% arrange(desc(degree))
+print(centrality_measures_mun)
+
+ggraph(wildfire_graph, layout = "fr") +
+  geom_edge_link(aes(width = weight), alpha = 0.4, color = "black") +
+  geom_node_point(aes(size = degree_centrality_mun, color = eigenvector_centrality_mun), alpha = 0.8) +
+  geom_node_text(aes(label = name), repel = TRUE, size = 3, color = "black") +
+  theme_void() +
+  scale_color_gradient(low = "blue", high = "red", name = "Eigenvector\nCentrality") + # Gradient for eigenvector centrality
+  scale_size(range = c(3, 10), name = "Degree\nCentrality") + # Scaled node size
+  guides(
+    size = guide_legend(title.position = "top", title.hjust = 0.5),
+    color = guide_colorbar(title.position = "top", title.hjust = 0.5)
+  ) + 
+  labs(
+    title = "Wildfire Network in Alberta",
+    subtitle = "Node size: Degree Centrality, Color: Eigenvector Centrality",
+    caption = "Edges represent shared wildfire causes between municipalities"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12, margin = margin(b = 10)),
+    legend.position = "bottom",
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 8),
+    plot.caption = element_text(size = 8, margin = margin(t = 10))
+  )
+
+# Bar plot: Number of fires by region
+ggplot(fires_by_mun, aes(x = reorder(shapeName, -total_fires), y = total_fires)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  theme_minimal() +
+  labs(
+    title = "Number of Fires by Region",
+    x = "Region",
+    y = "Number of Fires"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Stacked bar plot: Fire causes by region
+ggplot(fire_cause_by_mun, aes(x = reorder(shapeName, -count), y = count, fill = activity_class)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(
+    title = "Fire Causes by Region",
+    x = "Region",
+    y = "Number of Fires",
+    fill = "Cause"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
 ```
 
 ```{r}
