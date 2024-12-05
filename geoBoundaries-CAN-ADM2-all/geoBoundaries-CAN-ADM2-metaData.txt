@@ -1,0 +1,22 @@
+Usage of the geoBoundaries Database requires citation.:
+This can be satisfied by either:
+   1. (Preferred) - Citing our academic work: Runfola, D. et al. (2020)
+      geoBoundaries: A global database of political administrative boundaries.
+      PLoS ONE 15(4): e0231866. https://doi.org/10.1371/journal.pone.0231866
+   2. Providing a link to geoboundaries.org - i.e., 'Administrative boundaries courtesy 
+      of geoBoundaries.org'
+Additionally, we recommend citation of the source(s) noted in this metadata file.
+
+
+ISO-3166-1 (Alpha-3): CAN
+Boundary Representative of Year: 2022
+Boundary Type: ADM2
+Boundary Source(s): Statistics Canada (StatCan)
+Canonical Boundary Type Name: Divisions
+License: Open Government Canada 2.0
+License Notes: 
+License Source: https//www.statcan.gc.ca/en/reference/licence
+Data Source: https//open.canada.ca/data/en/dataset/ef70dc3b-1069-4037-9bce-61f47e628a1d
+Source Data Updated On: Fri Apr 7 13:59:04 2023
+File Built On: Dec 12, 2023
+Number of Administrative Units: 76
