@@ -559,3 +559,51 @@ ggplot(largest_fire_year_data, aes(x = month, y = current_size, group = 1)) +
   ) +
   theme_minimal()
 ```
+```{r}
+#How do environmental and geographical factors influence wildfire clustering and dominant causes in Alberta?
+
+# latitude, longitude, temperature, humidity, speed are chosen factors for DBScan clustering
+data_for_clustering <- wildfire_data %>%
+  select(fire_location_latitude, fire_location_longitude, temperature, relative_humidity, wind_speed) %>%
+  na.omit()  # to omit rows with missing values
+
+dbscan_result <- dbscan::dbscan(data_for_clustering, eps = 0.5, minPts = 10)
+
+# Add cluster labels to the data
+wildfire_data$cluster <- dbscan_result$cluster
+
+# Scale data for K-Means
+scaled_data <- scale(data_for_clustering)
+
+# Run K-Means with a predefined number of clusters
+kmeans_result <- kmeans(scaled_data, centers = 4, nstart = 25)
+
+# Add cluster labels to the data
+wildfire_data$cluster <- kmeans_result$cluster
+
+# Scatterplot of clusters (latitude vs. longitude)
+ggplot(wildfire_data, aes(x = fire_location_longitude, y = fire_location_latitude, color = as.factor(cluster))) +
+  geom_point(alpha = 0.7) +
+  labs(title = "Geographical Clusters of Wildfires", x = "Longitude", y = "Latitude", color = "Cluster") +
+  theme_minimal()
+
+# Scatterplot of clusters (temperature vs. wildfire size)
+ggplot(wildfire_data, aes(x = temperature, y = current_size, color = as.factor(cluster))) +
+  geom_point(alpha = 0.7) +
+  labs(title = "Environmental Clusters: Temperature vs. Wildfire Size", x = "Temperature", y = "Wildfire Size", color = "Cluster") +
+  theme_minimal()
+
+# Summarize environmental factors for each cluster
+cluster_summary <- wildfire_data %>%
+  group_by(cluster) %>%
+  summarise(
+    avg_temperature = mean(temperature, na.rm = TRUE),
+    avg_humidity = mean(relative_humidity, na.rm = TRUE),
+    avg_wind_speed = mean(wind_speed, na.rm = TRUE),
+    avg_size = mean(current_size, na.rm = TRUE),
+    n_wildfires = n()
+  )
+
+print(cluster_summary)
+#
+```
