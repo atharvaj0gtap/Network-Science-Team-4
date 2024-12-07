@@ -2,7 +2,9 @@
 title: "Wildfire Network Analysis"
 author: "Atharva Jagtap, Ishika Agarwal, Mariya Putwa, Prateek Balani"
 date: "2024-11-11"
-output: pdf_document
+output:
+  pdf_document: default
+  word_document: default
 ---
 # Big network plot
 
@@ -27,7 +29,11 @@ library(rgeoboundaries)
 library(tidyr)
 library(tibble)
 library(ggraph)
+library(tidygraph)
+```
 
+## Initial analysis upto Midpoint Report
+```{r}
 wildfire_data <- read.csv("data_clean.csv")
 
 # Filter top 100 fires per year based on `current_size`
@@ -158,7 +164,6 @@ cat("Number of vertices in graph:", vcount(g), "\n")
 ```
 
 
-
 ```{r}
 # Data Analysis on the given data 
 Degree_centrality <- degree(g)
@@ -258,8 +263,9 @@ plot(g,
      main = "Wildfire Network with Communities Highlighted")
 ```
 
+## Final Report Analysis, answering our research questions:
 ```{r}
-# Common causes of wildfires (Question 1 and 4)
+# Question 1: What are the most common causes of wildfires in different provinces, and how do these causes affect fire spread and clustering?
 
 #filtering data as to prevent any missing values and in turn creating issues 
 
@@ -372,8 +378,9 @@ ggplot() +
 ```
 
 ```{r}
+# Question 4: Which regions experience the most fires, and what are the primary causes by region?
+# and some extra stuff 
 
-# Q4 and some extra stuff 
 wildfires_with_municipalities <- st_join(wildfire_sf, alberta_municipalities, join = st_within)
 
 wildfires_with_municipalities_df <- wildfires_with_municipalities %>%
@@ -481,7 +488,7 @@ ggplot(fire_cause_by_mun, aes(x = reorder(shapeName, -count), y = count, fill = 
 ```
 
 ```{r}
-# Which year had the largest fires, and what were their characteristics? (Question 2)
+# Question 2: Which year had the largest fires, and what were their characteristics? 
 
 # Count the number of records for each fire year
 fire_year_counts <- wildfire_data %>%
@@ -560,7 +567,84 @@ ggplot(largest_fire_year_data, aes(x = month, y = current_size, group = 1)) +
   theme_minimal()
 ```
 ```{r}
-#How do environmental and geographical factors influence wildfire clustering and dominant causes in Alberta?
+# Question 3: Are larger wildfires more likely to have multiple causes, and do they play a more significant role in connecting different fire clusters?
+
+# Identify Large Fires
+quantile_threshold <- 0.75
+large_fires <- wildfire_data %>% 
+  filter(current_size > quantile(current_size, quantile_threshold, na.rm = TRUE))
+
+# Add cause diversity
+cause_diversity <- large_fires %>%
+  group_by(fire_number) %>%
+  summarise(cause_count = n_distinct(activity_class))
+
+# Calculate Centrality Metrics
+
+wildfire_network <- graph_from_data_frame(edges, vertices = nodes, directed = FALSE)
+
+# Add centrality measures
+V(wildfire_network)$degree <- degree(wildfire_network, mode = "all")
+V(wildfire_network)$betweenness <- betweenness(wildfire_network, directed = FALSE)
+
+# Merge centrality metrics with node attributes
+node_metrics <- data.frame(
+  name = V(wildfire_network)$name,
+  degree = V(wildfire_network)$degree,
+  betweenness = V(wildfire_network)$betweenness,
+  size = V(wildfire_network)$current_size
+)
+
+# Filter for large fires
+large_fire_metrics <- node_metrics %>% 
+  filter(size > quantile(size, quantile_threshold, na.rm = TRUE))
+
+# Refined Visualizations
+# (a) Scatterplot: Fire Size vs Degree Centrality
+ggplot(large_fire_metrics, aes(x = size, y = degree)) +
+  geom_point(color = "blue", size = 2) +
+  labs(
+    title = "Relationship Between Fire Size and Degree Centrality",
+    subtitle = "Larger fires are more connected in the network",
+    x = "Fire Size (Hectares)",
+    y = "Degree Centrality"
+  ) +
+  theme_minimal()
+
+# (b) Scatterplot: Fire Size vs Betweenness Centrality
+ggplot(large_fire_metrics, aes(x = size, y = betweenness)) +
+  geom_point(color = "red", size = 2) +
+  labs(
+    title = "Relationship Between Fire Size and Betweenness Centrality",
+    subtitle = "Larger fires are more central in connecting clusters",
+    x = "Fire Size (Hectares)",
+    y = "Betweenness Centrality"
+  ) +
+  theme_minimal()
+
+# (c) Network Visualization: Highlighting Large Fires
+V(wildfire_network)$highlight <- ifelse(
+  V(wildfire_network)$current_size > quantile(V(wildfire_network)$current_size, quantile_threshold, na.rm = TRUE),
+  "Large Fire", "Other"
+)
+
+wildfire_tbl_graph <- as_tbl_graph(wildfire_network)
+
+ggraph(wildfire_tbl_graph, layout = "fr") + 
+  geom_edge_link(color = "grey", alpha = 0.5) +
+  geom_node_point(aes(color = highlight, size = current_size)) +
+  scale_color_manual(values = c("Large Fire" = "red", "Other" = "blue")) +
+  labs(
+    title = "Wildfire Network with Highlighted Large Fires",
+    subtitle = "Red nodes represent fires in the top 25% by size",
+    size = "Fire Size (Hectares)"
+  ) +
+  theme_void()
+```
+
+
+```{r}
+# Question 5: How do environmental and geographical factors influence wildfire clustering and dominant causes in Alberta?
 
 # latitude, longitude, temperature, humidity, speed are chosen factors for DBScan clustering
 data_for_clustering <- wildfire_data %>%
